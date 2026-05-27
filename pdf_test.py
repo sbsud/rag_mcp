@@ -9,6 +9,6 @@
 
     # Option 1: pdfminer — handles layout much better than PyPDF2
     # pip install pdfminer.six
-path = "data/Sudarshan_Shubakar_Resume_MongoDB_SeniorStaffEngineer.docx.pdf"
+path = "data/my_resume.pdf"
 from pdfminer.high_level import extract_text
 print(extract_text(str(path)))

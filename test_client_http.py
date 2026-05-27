@@ -59,7 +59,7 @@ async def main():
             # ── rag_query (full RAG: retrieve + LLM) ────
             print("── rag_query ──────────────────────────────")
             result = await session.call_tool("rag_query", {
-                "question": "has he worked in GE?",
+                "question": "has he worked in on apache kafka? if so in which company?",
             })
             data = json.loads(result.content[0].text)
             print("Answer:", data["answer"])
