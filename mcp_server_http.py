@@ -38,8 +38,10 @@ async def list_tools() -> list[types.Tool]:
         types.Tool(
             name="rag_query",
             description=(
-                "Ask a question. Retrieves relevant chunks from the knowledge base "
-                "and uses the local LLM to generate an answer grounded in those chunks."
+                "Answer questions about Sudarshan's resume: work experience, job titles, "
+                "companies, employment dates, skills, education, certifications, and projects. "
+                "Use this for any question about his professional background and career history. "
+                "Do NOT use for current job listings, salary data, or anything not in the resume."
             ),
             inputSchema={
                 "type": "object",
