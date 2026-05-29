@@ -12,6 +12,7 @@ Run:
   # listens on http://localhost:8000
 """
 
+import logging
 import json
 import uvicorn
 from starlette.applications import Starlette
@@ -26,17 +27,25 @@ import vectorstore
 import embedder
 import ingest
 import config
+from logging_config import setup_logging
+
+setup_logging()
+logger = logging.getLogger(__name__)
+
 
 # ── Create the MCP server (same as before) ─────────────
-server = Server(config.MCP_SERVER_NAME)
+# server = Server(config.MCP_SERVER_NAME)
+server = Server("resume-local-server")
 
 
 # ── Tool declarations (identical to stdio version) ──────
 @server.list_tools()
 async def list_tools() -> list[types.Tool]:
+    logger.debug("list_tools called")
     return [
         types.Tool(
-            name="rag_query",
+            # name="rag_query",
+            name="resume_query",
             description=(
                 "Answer questions about Sudarshan's resume: work experience, job titles, "
                 "companies, employment dates, skills, education, certifications, and projects. "
@@ -53,7 +62,8 @@ async def list_tools() -> list[types.Tool]:
             },
         ),
         types.Tool(
-            name="rag_search",
+            # name="rag_search",
+            name="resume_search",
             description="Search the knowledge base and return raw chunks without generating an answer.",
             inputSchema={
                 "type": "object",
@@ -64,25 +74,27 @@ async def list_tools() -> list[types.Tool]:
                 "required": ["query"],
             },
         ),
+        # types.Tool(
+        #     # name="rag_ingest_text",
+        #     description="Add raw text to the knowledge base.",
+        #     inputSchema={
+        #         "type": "object",
+        #         "properties": {
+        #             "text":   {"type": "string"},
+        #             "source": {"type": "string"},
+        #         },
+        #         "required": ["text", "source"],
+        #     },
+        # ),
         types.Tool(
-            name="rag_ingest_text",
-            description="Add raw text to the knowledge base.",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "text":   {"type": "string"},
-                    "source": {"type": "string"},
-                },
-                "required": ["text", "source"],
-            },
-        ),
-        types.Tool(
-            name="rag_list_docs",
+            # name="rag_list_docs",
+            name="resume_list_docs",
             description="List all source documents currently in the knowledge base.",
             inputSchema={"type": "object", "properties": {}},
         ),
         types.Tool(
-            name="rag_stats",
+            # name="rag_stats",
+            name="resume_stats",
             description="Return statistics about the knowledge base.",
             inputSchema={"type": "object", "properties": {}},
         ),
@@ -92,8 +104,13 @@ async def list_tools() -> list[types.Tool]:
 # ── Tool handlers (identical to stdio version) ──────────
 @server.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
+    logger.info("Tool called: %s  args=%s", name, json.dumps(arguments)[:120])
 
-    if name == "rag_query":
+    import time
+    start = time.perf_counter()
+
+    # if name == "rag_query":
+    if name == "resume_query":
         result = rag_pipeline.query(
             question=arguments["question"],
             top_k=arguments.get("top_k"),
@@ -107,32 +124,35 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
         }
         return [types.TextContent(type="text", text=json.dumps(output, indent=2))]
 
-    elif name == "rag_search":
+    # elif name == "rag_search":
+    elif name == "resume_search":
         chunks = retriever.retrieve(
             query=arguments["query"],
             top_k=arguments.get("top_k"),
         )
         return [types.TextContent(type="text", text=json.dumps(chunks, indent=2))]
 
-    elif name == "rag_ingest_text":
-        text   = arguments["text"]
-        source = arguments.get("source", "inline")
-        chunks = ingest.chunk_text(text, config.CHUNK_SIZE, config.CHUNK_OVERLAP)
-        embeddings = embedder.embed(chunks)
-        import uuid
-        ids   = [str(uuid.uuid4()) for _ in chunks]
-        metas = [{"source": source, "chunk_id": str(i)} for i in range(len(chunks))]
-        vectorstore.get_store().add(ids=ids, embeddings=embeddings, documents=chunks, metadatas=metas)
-        return [types.TextContent(
-            type="text",
-            text=json.dumps({"status": "ok", "chunks_added": len(chunks), "source": source}),
-        )]
+    # elif name == "rag_ingest_text":
+    #     text   = arguments["text"]
+    #     source = arguments.get("source", "inline")
+    #     chunks = ingest.chunk_text(text, config.CHUNK_SIZE, config.CHUNK_OVERLAP)
+    #     embeddings = embedder.embed(chunks)
+    #     import uuid
+    #     ids   = [str(uuid.uuid4()) for _ in chunks]
+    #     metas = [{"source": source, "chunk_id": str(i)} for i in range(len(chunks))]
+    #     vectorstore.get_store().add(ids=ids, embeddings=embeddings, documents=chunks, metadatas=metas)
+    #     return [types.TextContent(
+    #         type="text",
+    #         text=json.dumps({"status": "ok", "chunks_added": len(chunks), "source": source}),
+    #     )]
 
-    elif name == "rag_list_docs":
+    # elif name == "rag_list_docs":
+    elif name == "resume_list_docs":
         docs = vectorstore.get_store().list_docs()
         return [types.TextContent(type="text", text=json.dumps(docs, indent=2))]
 
-    elif name == "rag_stats":
+    # elif name == "rag_stats":
+    elif name == "resume_stats":
         stats = {
             "total_chunks":   vectorstore.get_store().count(),
             "embed_provider": config.EMBED_PROVIDER,
@@ -167,15 +187,21 @@ def make_app() -> Starlette:
         Client opens a persistent GET /sse connection.
         The server streams MCP messages back over this channel.
         """
-        async with sse_transport.connect_sse(
-            request.scope, request.receive, request._send
-        ) as streams:
-            await server.run(
-                streams[0],
-                streams[1],
-                server.create_initialization_options(),
-            )
+        client = request.client.host if request.client else "unknown"
+        logger.info("SSE connection opened from %s", client)
 
+        try:
+            async with sse_transport.connect_sse(
+                request.scope, request.receive, request._send
+            ) as streams:
+                await server.run(
+                    streams[0],
+                    streams[1],
+                    server.create_initialization_options(),
+                )
+        finally:
+            logger.info("SSE connection closed from %s", client)        
+    
     return Starlette(
         routes=[
             Route("/sse", endpoint=handle_sse),          # SSE stream
@@ -186,7 +212,12 @@ def make_app() -> Starlette:
 
 if __name__ == "__main__":
     app = make_app()
-    print("MCP server listening on http://localhost:8000")
-    print("  SSE endpoint:      GET  http://localhost:8000/sse")
-    print("  Messages endpoint: POST http://localhost:8000/messages")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # print("MCP server listening on http://localhost:8000")
+    # print("  SSE endpoint:      GET  http://localhost:8000/sse")
+    # print("  Messages endpoint: POST http://localhost:8000/messages")
+    logger.info("Starting Local Resume MCP server on port %d", config.MCP_LOCAL_RESUME_HTTP_PORT)
+    logger.info("Models: LLM=%s  embed=%s", config.LLM_MODEL, config.EMBED_MODEL)
+    logger.info("Vector store: %s chunks in '%s'",
+                vectorstore.get_store().count(), config.VECTORSTORE_COLLECTION)
+
+    uvicorn.run(app, host="0.0.0.0", port=config.MCP_LOCAL_RESUME_HTTP_PORT)

@@ -1,10 +1,13 @@
 # config.py
+import logging
 from pathlib import Path
 
 # ── LLM ────────────────────────────────────────────────
 LLM_PROVIDER = "ollama"          # "ollama" | "openai_compatible"
 LLM_BASE_URL  = "http://localhost:11434"
-LLM_MODEL     = "llama3.2:1b"       # any model in `ollama list`
+# LLM_MODEL     = "llama3.2:1b"  
+# LLM_MODEL = "qwen2.5:7b"     # any model in `ollama list`
+LLM_MODEL = "qwen2.5:3b" 
 LLM_TEMPERATURE = 0.1
 LLM_MAX_TOKENS  = 1024
 
@@ -28,7 +31,13 @@ RETRIEVAL_STRATEGY    = "cosine" # "cosine" (only option for now; extend here)
 
 # ── CHUNKING ───────────────────────────────────────────
 CHUNK_SIZE    = 400    # characters per chunk
-CHUNK_OVERLAP = 250     # overlap between consecutive chunks
+CHUNK_OVERLAP = 80     # overlap between consecutive chunks
 
 # ── MCP SERVER ─────────────────────────────────────────
 MCP_SERVER_NAME = "rag-server"
+
+LOG_LEVEL_NAME = "INFO"   # change to "DEBUG" for verbose console
+LOG_DIR        = "logs/"
+
+MCP_LOCAL_RESUME_HTTP_PORT = 8000
+MCP_WEBSEARCH_PORT = 8001
