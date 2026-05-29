@@ -34,7 +34,6 @@ logger = logging.getLogger(__name__)
 
 
 # ── Create the MCP server (same as before) ─────────────
-# server = Server(config.MCP_SERVER_NAME)
 server = Server("resume-local-server")
 
 
@@ -44,7 +43,6 @@ async def list_tools() -> list[types.Tool]:
     logger.debug("list_tools called")
     return [
         types.Tool(
-            # name="rag_query",
             name="resume_query",
             description=(
                 "Answer questions about Sudarshan's resume: work experience, job titles, "
@@ -62,7 +60,6 @@ async def list_tools() -> list[types.Tool]:
             },
         ),
         types.Tool(
-            # name="rag_search",
             name="resume_search",
             description="Search the knowledge base and return raw chunks without generating an answer.",
             inputSchema={
@@ -87,13 +84,11 @@ async def list_tools() -> list[types.Tool]:
         #     },
         # ),
         types.Tool(
-            # name="rag_list_docs",
             name="resume_list_docs",
             description="List all source documents currently in the knowledge base.",
             inputSchema={"type": "object", "properties": {}},
         ),
         types.Tool(
-            # name="rag_stats",
             name="resume_stats",
             description="Return statistics about the knowledge base.",
             inputSchema={"type": "object", "properties": {}},
@@ -109,7 +104,6 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
     import time
     start = time.perf_counter()
 
-    # if name == "rag_query":
     if name == "resume_query":
         result = rag_pipeline.query(
             question=arguments["question"],
@@ -124,7 +118,6 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
         }
         return [types.TextContent(type="text", text=json.dumps(output, indent=2))]
 
-    # elif name == "rag_search":
     elif name == "resume_search":
         chunks = retriever.retrieve(
             query=arguments["query"],
@@ -146,12 +139,10 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
     #         text=json.dumps({"status": "ok", "chunks_added": len(chunks), "source": source}),
     #     )]
 
-    # elif name == "rag_list_docs":
     elif name == "resume_list_docs":
         docs = vectorstore.get_store().list_docs()
         return [types.TextContent(type="text", text=json.dumps(docs, indent=2))]
 
-    # elif name == "rag_stats":
     elif name == "resume_stats":
         stats = {
             "total_chunks":   vectorstore.get_store().count(),
@@ -212,9 +203,7 @@ def make_app() -> Starlette:
 
 if __name__ == "__main__":
     app = make_app()
-    # print("MCP server listening on http://localhost:8000")
-    # print("  SSE endpoint:      GET  http://localhost:8000/sse")
-    # print("  Messages endpoint: POST http://localhost:8000/messages")
+
     logger.info("Starting Local Resume MCP server on port %d", config.MCP_LOCAL_RESUME_HTTP_PORT)
     logger.info("Models: LLM=%s  embed=%s", config.LLM_MODEL, config.EMBED_MODEL)
     logger.info("Vector store: %s chunks in '%s'",

@@ -179,4 +179,4 @@ if __name__ == "__main__":
     logger.info("Starting web search MCP server on port %d",
                 config.MCP_WEBSEARCH_PORT)
     app = make_app()
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    uvicorn.run(app, host="0.0.0.0", port=config.MCP_WEBSEARCH_PORT)

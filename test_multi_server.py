@@ -37,7 +37,7 @@ async def test_server(name: str, url: str, tool_name: str, arguments: dict):
 
 
 async def main():
-    # Test RAG server
+    # Test resume server
     await test_server(
         name      = "RESUME server",
         url       = RESUME_URL,

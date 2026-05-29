@@ -133,12 +133,7 @@ async def run_agent(goal: str, verbose: bool = True) -> str:
                              srv["name"], e, exc_info=True)
                 raise
 
-        # if verbose:
-        #     print(f"\nGoal: {goal}")
-        #     print(f"Connected to {len(sessions)} server(s). Available tools:")
-
         ollama_tools, tool_router = await build_tool_registry(sessions)
-        # history = [{"role": "user", "content": goal}]
         history = [
             {
                 "role": "system",
