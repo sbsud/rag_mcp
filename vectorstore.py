@@ -8,9 +8,12 @@ Contract:
   count() -> int
   list_docs() -> list[dict]
 """
-
+import logging
+import os
 import config
 
+
+logger = logging.getLogger(__name__)
 
 def _get_store():
     if config.VECTORSTORE_PROVIDER == "chromadb":
@@ -24,8 +27,15 @@ _store = None
 def get_store():
     global _store
     if _store is None:
+        # _store = _get_store()
+        logger.debug("Initialising vector store: provider=%s  path=%s  collection=%s",
+                config.VECTORSTORE_PROVIDER, config.VECTORSTORE_PATH,
+                config.VECTORSTORE_COLLECTION)
         _store = _get_store()
+        logger.info("Vector store ready — %d chunks in collection '%s'",
+                    _store.count(), config.VECTORSTORE_COLLECTION)
     return _store
+
 
 
 # ── ChromaDB implementation ────────────────────────────
@@ -36,7 +46,6 @@ class ChromaStore:
     """
     def __init__(self):
         import chromadb
-        import os
         os.makedirs(config.VECTORSTORE_PATH, exist_ok=True)
         self.client = chromadb.PersistentClient(path=config.VECTORSTORE_PATH)
         self.collection = self.client.get_or_create_collection(
@@ -45,19 +54,31 @@ class ChromaStore:
         )
 
     def add(self, ids, embeddings, documents, metadatas):
+        logger.debug("Adding %d chunks to collection '%s'",
+                     len(ids), config.VECTORSTORE_COLLECTION)
         self.collection.add(
-            ids=ids,
-            embeddings=embeddings,
-            documents=documents,
-            metadatas=metadatas,
+            ids=ids, embeddings=embeddings,
+            documents=documents, metadatas=metadatas,
         )
+        logger.info("Stored %d chunks — collection total: %d",
+                    len(ids), self.collection.count())
+
 
     def query(self, query_embedding: list[float], top_k: int) -> dict:
+        logger.debug("Vector search: top_k=%d  collection='%s'",
+                top_k, config.VECTORSTORE_COLLECTION)
+
         results = self.collection.query(
             query_embeddings=[query_embedding],
             n_results=top_k,
             include=["documents", "metadatas", "distances"],
         )
+        distances = results["distances"][0]
+        scores    = [round(1 - d, 4) for d in distances]
+        sources   = [m.get("source", "?") for m in results["metadatas"][0]]
+        logger.debug("Search returned %d result(s) — scores: %s  sources: %s",
+                     len(scores), scores, sources)
+
         return {
             "ids":       results["ids"][0],
             "documents": results["documents"][0],
@@ -78,4 +99,5 @@ class ChromaStore:
             if src not in seen:
                 seen.add(src)
                 docs.append(meta)
+        logger.debug("list_docs: %d unique source(s)", len(docs))
         return docs
