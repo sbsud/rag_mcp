@@ -50,7 +50,8 @@ async def build_tool_registry(sessions: dict) -> tuple[list[dict], dict]:
       - tool_router:    dict mapping tool_name → ClientSession
                         so we know which server to call for each tool
     """
-
+    ollama_tools = []
+    tool_router  = {}
     for server_name, session in sessions.items():
         response = await session.list_tools()
         logger.debug("Server '%s' exposes %d tool(s)", server_name,
