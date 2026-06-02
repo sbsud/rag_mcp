@@ -18,6 +18,7 @@ import requests
 import uvicorn
 from starlette.applications import Starlette
 from starlette.routing import Mount, Route
+from starlette.responses import Response
 from mcp.server.sse import SseServerTransport
 from mcp.server import Server
 from mcp import types
@@ -167,7 +168,8 @@ def make_app() -> Starlette:
                     server.create_initialization_options(),
                 )
         finally:
-            logger.info("SSE connection closed from %s", client)            
+            logger.info("SSE connection closed from %s", client) 
+        return Response()           
     return Starlette(routes=[
         Route("/sse", endpoint=handle_sse),
         Route("/health",   endpoint=health),  

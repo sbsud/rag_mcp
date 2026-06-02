@@ -17,6 +17,7 @@ import json
 import uvicorn
 from starlette.applications import Starlette
 from starlette.routing import Mount, Route
+from starlette.responses import Response
 from mcp.server.sse import SseServerTransport
 from mcp.server import Server
 from mcp import types
@@ -46,7 +47,7 @@ async def list_tools() -> list[types.Tool]:
             name="resume_query",
             description=(
                 "Answer questions about Sudarshan's resume: work experience, job titles, "
-                "companies, employment dates, skills, education, certifications, and projects. "
+                "companies, employment dates, competencies, skills, education, certifications, and projects. "
                 "Use this for any question about his professional background and career history. "
                 "Do NOT use for current job listings, salary data, or anything not in the resume."
             ),
@@ -193,6 +194,8 @@ def make_app() -> Starlette:
         finally:
             logger.info("SSE connection closed from %s", client)        
     
+        return Response()
+
     return Starlette(
         routes=[
             Route("/sse", endpoint=handle_sse),          # SSE stream

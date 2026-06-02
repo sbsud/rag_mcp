@@ -33,15 +33,6 @@ def chunk_text(text: str, size: int, overlap: int) -> list[str]:
 
     return chunks
 
-
-# def load_file(path: Path) -> str:
-#     if path.suffix.lower() == ".pdf":
-#         from PyPDF2 import PdfReader
-#         reader = PdfReader(str(path))
-#         return "\n".join(page.extract_text() or "" for page in reader.pages)
-#     else:
-#         return path.read_text(encoding="utf-8", errors="replace")
-
 def load_file(path: Path) -> str:
     logger.debug("load_file: %s  suffix=%s", path.name, path.suffix)
     if path.suffix.lower() == ".pdf":
@@ -53,8 +44,6 @@ def load_file(path: Path) -> str:
 
 
 def _load_pdf(path: Path) -> str:
-    # Option 1: pdfminer — handles layout much better than PyPDF2
-    # pip install pdfminer.six
     logger.info("Extracting PDF text: %s", path.name)
     try:
 
@@ -120,8 +109,7 @@ def main():
         return
 
     path = Path(args[0])
-    files = list(path.rglob("*.txt")) + list(path.rglob("*.pdf")) \
-        if path.is_dir() else [path]
+    files = list(path.rglob("*.txt")) + list(path.rglob("*.pdf")) if path.is_dir() else [path]
     
     logger.info("Found %d file(s) to ingest in '%s'", len(files), path)
     

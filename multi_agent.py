@@ -20,6 +20,7 @@ import logging
 import time
 import asyncio
 import json
+import os
 import requests
 import config
 from mcp import ClientSession
@@ -49,8 +50,6 @@ async def build_tool_registry(sessions: dict) -> tuple[list[dict], dict]:
       - tool_router:    dict mapping tool_name → ClientSession
                         so we know which server to call for each tool
     """
-    ollama_tools = []
-    tool_router  = {}
 
     for server_name, session in sessions.items():
         response = await session.list_tools()
@@ -139,12 +138,12 @@ async def run_agent(goal: str, verbose: bool = True) -> str:
                 "role": "system",
                 "content": (
                     "You are a helpful assistant with access to tools. "
-                    "When asked to search for jobs matching someone's skills: "
-                    "first retrieve the skills using the resume tool, "
-                    "then build a search query from the skill names themselves — "
+                    "When asked to search for jobs matching someone's competencies, skills: "
+                    "first retrieve the top competencies, skills using the resume tool, "
+                    "then build a search query from the top competency names themselves — "
                     "never use the person's name as a search term for job listings. "
-                    "A good job search query looks like: "
-                    "'Kafka Flink Kubernetes Staff Engineer jobs Bangalore site:linkedin.com OR site:naukri.com'"
+                    # "A good job search query looks like: "
+                    # "'Kafka Flink Kubernetes Staff Engineer jobs Bangalore site:linkedin.com OR site:naukri.com'"
                 )
             },
             {"role": "user", "content": goal}
@@ -160,51 +159,59 @@ async def run_agent(goal: str, verbose: bool = True) -> str:
             logger.debug("Sending %d message(s) in history to LLM", len(history))
             llm_start = time.perf_counter()
 
-            # Ask Ollama what to do next
-            response = requests.post(
-                f"{config.LLM_BASE_URL}/api/chat",
-                json={
-                    "model":    config.LLM_MODEL,
-                    "stream":   False,
-                    "tools":    ollama_tools,
-                    "messages": history,
-                    "options":  {"temperature": 0.1},
-                }
-            )
-            response.raise_for_status()
-            message = response.json()["message"]
+            logger.debug("HISTORY %s", history)
+            message   = _call_llm(history, ollama_tools)
 
             llm_elapsed = time.perf_counter() - llm_start
-            logger.info("LLM responded in %.2fs", llm_elapsed)
-
+            logger.info("LLM responded in %.2fs  provider=%s  model=%s",
+                        llm_elapsed, config.LLM_PROVIDER, config.LLM_MODEL)
             # Tool call?
             if message.get("tool_calls"):
-                for tool_call in message["tool_calls"]:
-                    fn        = tool_call["function"]
-                    tool_name = fn["name"]
-                    arguments = fn["arguments"]
+                # Re-serialise arguments to JSON string for history storage.
+                # Groq sends arguments as a string, we parse them to dict for tool dispatch,
+                # but Groq requires them back as a string when the message goes into history.
+                history_tool_calls = []
+                for tc in message["tool_calls"]:
+                    history_tc = {
+                        "id":       tc.get("id", ""),
+                        "type":     tc.get("type", "function"),
+                        "function": {
+                            "name":      tc["function"]["name"],
+                            "arguments": (
+                                json.dumps(tc["function"]["arguments"])
+                                if isinstance(tc["function"]["arguments"], dict)
+                                else tc["function"]["arguments"]   # already a string (Ollama path)
+                            ),
+                        }
+                    }
+                    history_tool_calls.append(history_tc)
+
+                history.append({
+                    "role":       "assistant",
+                    "content":    message.get("content") or "",
+                    "tool_calls": history_tool_calls,
+                })
+
+                for tc, history_tc in zip(message["tool_calls"], history_tool_calls):
+                    fn           = tc["function"]
+                    tool_name    = fn["name"]
+                    arguments    = fn["arguments"]   # dict — already parsed, used for dispatch
+                    tool_call_id = tc.get("id", tool_name)
 
                     logger.info("LLM decided: call '%s'  args=%s",
-                                tool_name, json.dumps(arguments)[:120])
+                                tool_name, json.dumps(arguments))
 
-
-                    # Route to the correct server
                     tool_result = await call_tool(tool_router, tool_name, arguments)
 
-                    if verbose:
-                        preview = tool_result[:300].replace('\n', ' ')
-                        print(f"         → {preview}...\n")
+                    if len(tool_result) > 2000:
+                        logger.warning("Tool result truncated: %d → 2000 chars", len(tool_result))
+                        tool_result = tool_result[:2000]
 
-                    # Append to history — LLM sees this on next iteration
                     history.append({
-                        "role":       "assistant",
-                        "content":    "",
-                        "tool_calls": [tool_call],
-                    })
-                    history.append({
-                        "role":    "tool",
-                        "content": tool_result[:2000],  # cap to keep context lean
-                        "name":    tool_name,
+                        "role":         "tool",
+                        "content":      tool_result,
+                        "tool_call_id": tool_call_id,
+                        "name":         tool_name,
                     })
 
             # No tool call = LLM is done
@@ -219,6 +226,74 @@ async def run_agent(goal: str, verbose: bool = True) -> str:
     
     logger.warning("Agent reached MAX_STEPS=%d without finishing", MAX_STEPS)
     return "Reached maximum steps without a final answer."
+
+
+def _call_llm(messages: list, tools: list) -> dict:
+    """
+    Calls the LLM with tool support.
+    Handles both Ollama and OpenAI-compatible (Groq, Together AI) providers.
+    Always returns a normalised message dict:
+      {"content": str, "tool_calls": [...] or None}
+    with tool_calls arguments always as a parsed dict (not a JSON string).
+    """
+    if config.LLM_PROVIDER == "ollama":
+        return _call_ollama(messages, tools)
+    elif config.LLM_PROVIDER == "openai_compatible":
+        return _call_openai_compatible(messages, tools)
+    else:
+        raise ValueError(f"Unknown LLM_PROVIDER: {config.LLM_PROVIDER}")
+
+
+def _call_ollama(messages: list, tools: list) -> dict:
+    url = f"{config.LLM_BASE_URL}/api/chat"
+    logger.debug("LLM call: ollama  url=%s  model=%s", url, config.LLM_MODEL)
+
+    response = requests.post(url, json={
+        "model":    config.LLM_MODEL,
+        "stream":   False,
+        "tools":    tools,
+        "messages": messages,
+        "options":  {"temperature": 0.1},
+    })
+    response.raise_for_status()
+    message = response.json()["message"]
+
+    # Ollama returns tool_call arguments as a dict already — no parsing needed
+    return message
+
+
+def _call_openai_compatible(messages: list, tools: list) -> dict:
+    url     = f"{config.LLM_BASE_URL}/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {os.getenv('LLM_API_KEY', 'none')}"}
+    logger.debug("REMOVE headers %s", headers)
+    logger.debug("LLM call: openai_compatible  url=%s  model=%s", url, config.LLM_MODEL)
+
+    response = requests.post(url, headers=headers, json={
+        "model":       config.LLM_MODEL,
+        "tools":       tools,
+        "messages":    messages,
+        "temperature": 0.1,
+    })
+
+    if not response.ok:
+        print(f"=== GROQ ERROR {response.status_code} ===")
+        print(response.text)           # Groq always puts the reason here
+        print("=== END GROQ ERROR ===")
+
+    response.raise_for_status()
+    logger.debug("LLM response \n%s", json.dumps(response.json(),indent=2))
+    # OpenAI format wraps the message in choices[0]
+    message = response.json()["choices"][0]["message"]
+
+    # OpenAI/Groq returns tool_call arguments as a JSON *string* — parse it to dict
+    # so the rest of the agent sees a consistent format regardless of provider
+    if message.get("tool_calls"):
+        for tc in message["tool_calls"]:
+            args = tc["function"]["arguments"]
+            if isinstance(args, str):
+                tc["function"]["arguments"] = json.loads(args)
+
+    return message
 
 
 # ── Queries ────────────────────────────────────────────────────────────────
@@ -246,12 +321,14 @@ if __name__ == "__main__":
     # Query 3: chained — RAG first to get skills, then web search for jobs
     print("\n" + "=" * 60)
     answer = asyncio.run(run_agent(
-        "Step 1: Use resume_query to find Sudarshan's technical skills. "
-        "Step 2: From the skills returned, construct a job search query using "
-        "the actual skill names (like 'Kafka Kubernetes Staff Engineer jobs Bangalore') "
+        "Step 1: Use resume_query to find Sudarshan's top 3 technical job competencies. "
+        "Step 2: From the competencies returned, construct a job search query using "
+        # "the actual skill names (like 'Kafka Kubernetes Staff Engineer jobs Bangalore') "
+        "Sudarshan's actual top 3 technical job competency names"
         "— do NOT use the person's name in the search query. "
-        "Step 3: Use web_search with that skills-based query to find matching "
-        "job listings on LinkedIn, Naukri, or similar job boards. "
+        "Step 3: Use web_search with that competencies-based query to find matching "
+        "job listings from companies on LinkedIn, Naukri, or similar job boards. "
+        "- do NOT return person profiles or advice or blog posts from LinkedIn or similar with matching skills or links to lists of jobs. " \
         "Step 4: Return the top matching roles with their links."
     ))
     print("Answer:", answer)

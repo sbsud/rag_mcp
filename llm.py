@@ -5,6 +5,7 @@ Swap LLM_PROVIDER in config.py to change the backend.
 Contract: generate(prompt: str) -> str
 """
 import logging
+import json
 import time
 import requests
 import config
@@ -76,5 +77,5 @@ def _generate_openai_compatible(prompt: str) -> str:
     except requests.exceptions.HTTPError as e:
         logger.error("OpenAI-compatible generate request failed: %s", e)
         raise
-
+    # logger.debug("LLM response \n%s", json.dumps(response.json(),indent=2))
     return response.json()["choices"][0]["message"]["content"].strip()
