@@ -46,3 +46,8 @@ LOG_DIR        = "logs/"
 
 MCP_LOCAL_RESUME_HTTP_PORT = 8000
 MCP_WEBSEARCH_PORT = 8001
+MCP_EMAIL_SERVER_PORT = 8002
+
+# EMAIL configs
+SMTP_HOST       = "smtp.gmail.com"
+SMTP_PORT       = 587
