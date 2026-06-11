@@ -3,3 +3,25 @@ __pycache__/
 venv/
 *.py[cod]
 data/
+misc/blog.png
+misc/building_local_rag_mcp_blog.md
+misc/linkedinpost.txt
+misc/sample.txt
+misc/blog2/.$title.drawio.bkp
+misc/blog2/agent_loop.jpg
+misc/blog2/linkedinpost.txt
+misc/blog2/rag_mcp_part2_blog_rewritten.md
+misc/blog2/rag_mcp_part2_blog.md
+misc/blog2/rag_mcp_part2_final.md
+misc/blog2/routing_v5.jpg
+misc/blog2/title_cover_final.jpg
+misc/blog2/title.drawio
+misc/blog2/title.png
+misc/google/dynr aavu ovuo hkle.txt
+data_dump/amazon_appliance_complaints.txt
+data_dump/Appliances.jsonl
+data_dump/meta_Appliances.jsonl
+data_dump/output.txt
+data_dump/test
+data_dump/test.py
+archive/mcp_server_local_docs_on_http.py
