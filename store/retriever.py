@@ -7,12 +7,12 @@ from the vector store.
 import logging
 import time
 import config
-import embedder
-import vectorstore
+from store import embedder
+from store import vectorstore
 
 logger = logging.getLogger(__name__)
 
-def retrieve(query: str, top_k: int = None) -> list[dict]:
+def retrieve(corpus: str, query: str, top_k: int = None) -> list[dict]:
     """
     Returns a list of dicts:
       [{"text": ..., "source": ..., "score": ..., "chunk_id": ...}, ...]
@@ -30,7 +30,7 @@ def retrieve(query: str, top_k: int = None) -> list[dict]:
     # 2. Search the vector store
     logger.debug("Searching vector store...")
     store = vectorstore.get_store()
-    results = store.query(query_vec, top_k=top_k)
+    results = store.query(corpus, query_vec, top_k=top_k)
 
     # 3. Package results
     chunks = []

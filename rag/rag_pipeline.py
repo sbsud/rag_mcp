@@ -3,11 +3,13 @@
 Full RAG pipeline.
 retrieve() → build prompt → llm.generate()
 """
-
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import logging
 import time
-import retriever
-import llm
+from store import retriever
+from llm import llm
 
 
 logger = logging.getLogger(__name__)
@@ -26,7 +28,7 @@ If the context does not contain enough information, say "I don't have enough inf
 """
 
 
-def query(question: str, top_k: int = None) -> dict:
+def query(corpus: str, question: str, top_k: int = None) -> dict:
     """
     Run the full RAG pipeline.
     Returns:
@@ -40,7 +42,7 @@ def query(question: str, top_k: int = None) -> dict:
     start = time.perf_counter()
 
     # Step 1: Retrieve relevant chunks
-    chunks = retriever.retrieve(question, top_k=top_k)
+    chunks = retriever.retrieve(corpus, question, top_k=top_k)
 
     if not chunks:
         return {
@@ -65,7 +67,7 @@ def query(question: str, top_k: int = None) -> dict:
 
     # Step 4: Generate answer
     answer = llm.generate(prompt)
-
+    logger.debug(answer)
     elapsed = time.perf_counter() - start
     logger.info("RAG query complete in %.2fs — answer_len=%d chars",
                 elapsed, len(answer))
