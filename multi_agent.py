@@ -38,6 +38,8 @@ _port_config = config.TARGET[_target]["mcp_port"]
 MCP_SERVERS = [
     {"name": "complaints",    "url": f"http://localhost:{_port_config["complaints"]}/sse"},
     {"name": "policy", "url": f"http://localhost:{_port_config["policy"]}/sse"},
+    {"name": "github", "url": f"http://localhost:{_port_config["github"]}/sse"},
+
 ]
 
 MAX_STEPS = 10

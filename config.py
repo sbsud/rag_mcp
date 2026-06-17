@@ -50,26 +50,7 @@ MCP_LOCAL_RESUME_HTTP_PORT = 8000
 MCP_WEBSEARCH_PORT = 8001
 
 TARGET = {
-    "resume": {
-        "name": "resume",
-        "collection_name": "corpus_resume",
-        "description": "Resume configurations",
-        "system_prompt": ("You are a helpful assistant with access to tools. "
-                    "When asked to search for jobs matching someone's skills: "
-                    "first retrieve the skills using the resume tool, "
-                    "then build a search query from the skill names themselves — "
-                    "never use the person's name as a search term for job listings. "
-                    "A good job search query looks like: "
-                    "'Kafka Flink Kubernetes Staff Engineer jobs Bangalore site:linkedin.com OR site:naukri.com'"),
-        "goal": ("Step 1: Use resume_query to find Sudarshan's technical skills. "
-                    "Step 2: From the skills returned, construct a job search query using "
-                    "the actual skill names (like 'Kafka Kubernetes Staff Engineer jobs Bangalore') "
-                    "— do NOT use the person's name in the search query. "
-                    "Step 3: Use web_search with that skills-based query to find matching "
-                    "job listings on LinkedIn, Naukri, or similar job boards. "
-                    "Step 4: Return the top matching roles with their links."),
-        "mcp_port": 8000,
-    },
+
     "ecommerce": {
         "name": "ecommerce",
         "collections": {
@@ -78,13 +59,21 @@ TARGET = {
         },
         "description": "ecomnerce configurations",
         "system_prompt": ("You are a customer complaint intelligence agent. "
-                        "You have tools: complaints_query, policy_query," ),
-                        #  " create_github_issue. "
-                        # "Never call create_github_issue unless complaint_search has already been called in this session. "
-                        # "GitHub issue body must always include: complaint pattern found, source category, policy clause referenced."),
-        "goal": ("Investigate Appliance complaints with to find the top complaint pattern, justify your answer, and "
-                "fetch the resolution policy relevant to the top complaints."
-                # ", then file a GitHub issue summarising both."
+                        "You have tools: complaints_query, policy_query,"
+                         " create_github_issue. "
+                        "Never call create_github_issue unless complaints_query and policy_query has already been called in this session. "
+                        "GitHub issue body must always include the actual complaint pattern found, source category, policy clause referenced."),
+        "goal": (
+                    "Step 1: Use complaints_query to find the top complaint pattern, including specific brand names and complaint themes. "
+                    "Step 2: Use policy_query to find the relevant resolution policy for that exact pattern. "
+                    "If no policy clause genuinely applies to the complaint pattern found in Step 1, do not proceed to Step 3 — "
+                    "report that no applicable policy was found instead. "
+                    "Step 3: Only if a genuinely applicable policy clause was found, use create_github_issue ONCE, "
+                    "passing the specific findings from steps 1 and 2 verbatim. "
+                    "After create_github_issue returns successfully, you are DONE — report the issue URL as your final answer."
+            # "Investigate Appliance complaints with to find the top complaint pattern, justify your answer, and "
+            #     "fetch the resolution policy relevant to the top complaints."
+            #     ", then file a GitHub issue summarising both."
                 ),
         "mcp_port": {
             "complaints": 8003,
@@ -92,11 +81,7 @@ TARGET = {
             "github": 8005,
         },
     },
-    # "automotive": {
-    #     "collection_name": "corpus_automotive",
-    #     "description": "Automotive FMEA corpus",
-    #     "port": 8001,
-    # },
+
 }
 
 

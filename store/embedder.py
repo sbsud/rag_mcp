@@ -37,11 +37,10 @@ def _embed_ollama(texts: list[str]) -> list[list[float]]:
         "input": texts,
         })
         response.raise_for_status()
-    except:
+    except Exception as e:
         logger.error("Ollama embed request failed: %s", e)
         raise
 
-    # return response.json()["embeddings"]   # list[list[float]]
     embeddings = response.json()["embeddings"]
     logger.debug("Received %d embedding(s) from Ollama", len(embeddings))
     return embeddings
