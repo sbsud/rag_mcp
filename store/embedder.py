@@ -46,11 +46,16 @@ def _embed_ollama(texts: list[str]) -> list[list[float]]:
     logger.debug("Received %d embedding(s) from Ollama", len(embeddings))
     return embeddings
 
+_st_model = None
 
+def _get_st_model():
+    global _st_model
+    if _st_model is None:
+        from sentence_transformers import SentenceTransformer
+        _st_model = SentenceTransformer(config.EMBED_MODEL)
+    return _st_model
 
 # ── Backend B: sentence-transformers (CPU, no Ollama needed) ──
 def _embed_sentence_transformers(texts: list[str]) -> list[list[float]]:
-    # pip install sentence-transformers
-    from sentence_transformers import SentenceTransformer
-    model = SentenceTransformer(config.EMBED_MODEL)
-    return model.encode(texts, convert_to_numpy=True).tolist()
+    model = _get_st_model()
+    return model.encode(texts, batch_size=16, convert_to_numpy=True).tolist()

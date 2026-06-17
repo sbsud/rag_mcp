@@ -9,16 +9,19 @@ LLM_BASE_URL = "https://api.groq.com/openai"
 # LLM_MODEL     = "llama3.2:1b"  
 # LLM_MODEL = "qwen2.5:7b"     # any model in `ollama list`
 # LLM_MODEL = "qwen2.5:3b" 
-LLM_MODEL = "llama-3.1-8b-instant"
+# LLM_MODEL = "llama-3.1-8b-instant"
+LLM_MODEL = "llama-3.3-70b-versatile"
 LLM_TEMPERATURE = 0.1
 LLM_MAX_TOKENS  = 1024
 
 # ── EMBEDDINGS ─────────────────────────────────────────
-EMBED_PROVIDER = "ollama"        # "ollama" | "sentence_transformers"
-EMBED_BASE_URL = "http://localhost:11434"
+EMBED_PROVIDER = "sentence_transformers"
+EMBED_MODEL = "BAAI/bge-m3"  # same model, loaded directly
+# EMBED_PROVIDER = "ollama"        # "ollama" | "sentence_transformers"
+# EMBED_BASE_URL = "http://localhost:11434"
 # EMBED_MODEL    = "nomic-embed-text"   # must match `ollama pull` name
 # EMBED_MODEL = "mxbai-embed-large"
-EMBED_MODEL = "bge-m3"
+# EMBED_MODEL = "bge-m3"
 # If using sentence_transformers instead:
 # EMBED_PROVIDER = "sentence_transformers"
 # EMBED_MODEL    = "all-MiniLM-L6-v2"
@@ -40,7 +43,7 @@ CHUNK_OVERLAP = 80     # overlap between consecutive chunks
 # ── MCP SERVER ─────────────────────────────────────────
 MCP_SERVER_NAME = "rag-server"
 
-LOG_LEVEL_NAME = "DEBUG"   # change to "DEBUG" for verbose console
+LOG_LEVEL_NAME = "INFO"   # change to "DEBUG" for verbose console
 LOG_DIR        = "logs/"
 
 MCP_LOCAL_RESUME_HTTP_PORT = 8000
@@ -79,13 +82,14 @@ TARGET = {
                         #  " create_github_issue. "
                         # "Never call create_github_issue unless complaint_search has already been called in this session. "
                         # "GitHub issue body must always include: complaint pattern found, source category, policy clause referenced."),
-        "goal": ("Investigate complaints find the top complaint pattern, "
-                "fetch the relevant resolution policy"
+        "goal": ("Investigate Appliance complaints with to find the top complaint pattern, justify your answer, and "
+                "fetch the resolution policy relevant to the top complaints."
                 # ", then file a GitHub issue summarising both."
                 ),
         "mcp_port": {
             "complaints": 8003,
-            "policy": 8004
+            "policy": 8004,
+            "github": 8005,
         },
     },
     # "automotive": {

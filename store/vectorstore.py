@@ -44,14 +44,6 @@ class ChromaStore:
     ChromaDB stores vectors in a local directory (VECTORSTORE_PATH).
     No separate server process needed.
     """
-    # def __init__(self):
-    #     import chromadb
-    #     os.makedirs(config.VECTORSTORE_PATH, exist_ok=True)
-    #     self.client = chromadb.PersistentClient(path=config.VECTORSTORE_PATH)
-    #     self.collection = self.client.get_or_create_collection(
-    #         name=config.VECTORSTORE_CORPUS_COLLECTION,
-    #         metadata={"hnsw:space": "cosine"},  # use cosine similarity
-    #     )
 
     def __init__(self, target:str):
         import chromadb
@@ -67,71 +59,45 @@ class ChromaStore:
                 name=coll_name,
                 metadata={"hnsw:space": "cosine"},  # use cosine similarity
             )
-        print("── self.collections ─────────────────────────────")
-        print(self.collections)
-        print("── self.collections ─────────────────────────────")
 
-    # def add(self, ids, embeddings, documents, metadatas):
-    #     logger.debug("Adding %d chunks to collection '%s'",
-    #                  len(ids), config.VECTORSTORE_CORPUS_COLLECTION)
-    #     self.collection.add(
-    #         ids=ids, embeddings=embeddings,
-    #         documents=documents, metadatas=metadatas,
-    #     )
-    #     logger.info("Stored %d chunks — collection total: %d",
-    #                 len(ids), self.collection.count())
 
     def add(self, collection, ids, embeddings, documents, metadatas):
-        logger.debug("Adding %d chunks to collection '%s'",
-                     len(ids), collection)
-        self.collections[collection].add(
-            ids=ids, embeddings=embeddings,
-            documents=documents, metadatas=metadatas,
-        )
-        logger.info("Stored %d chunks — collection total: %d",
-                    len(ids), self.collections[collection].count())
+        coll = self.collections[collection]
+        max_batch = coll._client.get_max_batch_size()  # chromadb exposes this
+        total = len(ids)
+        logger.debug("Adding %d chunks to collection '%s' in batches of %d",
+                    total, collection, max_batch)
+
+        for i in range(0, total, max_batch):
+            end = i + max_batch
+            coll.add(
+                ids=ids[i:end],
+                embeddings=embeddings[i:end],
+                documents=documents[i:end],
+                metadatas=metadatas[i:end],
+            )
+            logger.info("Added batch %d-%d of %d", i, min(end, total), total)
+
+        logger.info("Stored %d chunks — collection total: %d", total, coll.count())
 
 
-    # def query(self, query_embedding: list[float], top_k: int) -> dict:
-    #     logger.debug("Vector search: top_k=%d  collection='%s'",
-    #             top_k, config.VECTORSTORE_CORPUS_COLLECTION)
-
-    #     results = self.collection.query(
-    #         query_embeddings=[query_embedding],
-    #         n_results=top_k,
-    #         include=["documents", "metadatas", "distances"],
-    #     )
-    #     distances = results["distances"][0]
-    #     scores    = [round(1 - d, 4) for d in distances]
-    #     sources   = [m.get("source", "?") for m in results["metadatas"][0]]
-    #     logger.debug("Search returned %d result(s) — scores: %s  sources: %s",
-    #                  len(scores), scores, sources)
-
-    #     return {
-    #         "ids":       results["ids"][0],
-    #         "documents": results["documents"][0],
-    #         "metadatas": results["metadatas"][0],
-    #         "distances": results["distances"][0],
-    #     }
-
-    def query(self, collection:str, query_embedding: list[float], top_k: int) -> dict:
+    def query(self, collection:str, query_embedding: list[float], top_k: int, where: dict = None) -> dict:
         collection_name = config.TARGET[self.target]["collections"][collection]
         logger.debug("Vector search: top_k=%d  collection='%s'",
                 top_k, collection_name)
         
         logger.info("Collection name for query is %s", collection_name)
-        logger.info("#############################################")
         coll = self.collections[collection]
-        logger.info("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
-        print("── self.collections ─────────────────────────────")
-        print(coll)
-        print("── self.collections ─────────────────────────────")
-        results = coll.query(
-            query_embeddings=[query_embedding],
-            n_results=top_k,
-            include=["documents", "metadatas", "distances"],
-        )
-        # print(results)
+
+        kwargs = {
+            "query_embeddings": [query_embedding],
+            "n_results": top_k,
+            "include": ["documents", "metadatas", "distances"],
+        }
+        if where:
+            kwargs["where"] = where
+
+        results = coll.query(**kwargs)
         distances = results["distances"][0]
         scores    = [round(1 - d, 4) for d in distances]
         sources   = [m.get("source", "?") for m in results["metadatas"][0]]
@@ -145,25 +111,8 @@ class ChromaStore:
             "distances": results["distances"][0],
         }
 
-
-    # def count(self) -> int:
-    #     return self.collection.count()
-
     def count(self, collection:str) -> int:
         return self.collections[collection].count()
-
-    # def list_docs(self) -> list[dict]:
-    #     """Return unique source documents (by metadata['source'])."""
-    #     all_items = self.collection.get(include=["metadatas"])
-    #     seen = set()
-    #     docs = []
-    #     for meta in all_items["metadatas"]:
-    #         src = meta.get("source", "unknown")
-    #         if src not in seen:
-    #             seen.add(src)
-    #             docs.append(meta)
-    #     logger.debug("list_docs: %d unique source(s)", len(docs))
-    #     return docs
     
     def list_docs(self, collection: str) -> list[dict]:
         """Return unique source documents (by metadata['source'])."""

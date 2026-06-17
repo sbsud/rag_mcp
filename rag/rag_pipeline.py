@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 PROMPT_TEMPLATE = """\
 You are a helpful assistant. Answer the question using ONLY the context provided below.
 If the context does not contain enough information, say "I don't have enough information to answer that."
+If a policy clause specifies a category, condition, or scope that does not match the question being asked, do not apply that clause — explicitly note that it doesn't apply rather than including it as if it does.
+
 
 ## Context
 {context}
@@ -28,7 +30,9 @@ If the context does not contain enough information, say "I don't have enough inf
 """
 
 
-def query(corpus: str, question: str, top_k: int = None) -> dict:
+
+
+def query(corpus: str, question: str, top_k: int = None, where: dict = None) -> dict:
     """
     Run the full RAG pipeline.
     Returns:
@@ -42,7 +46,7 @@ def query(corpus: str, question: str, top_k: int = None) -> dict:
     start = time.perf_counter()
 
     # Step 1: Retrieve relevant chunks
-    chunks = retriever.retrieve(corpus, question, top_k=top_k)
+    chunks = retriever.retrieve(corpus, question, top_k=top_k, where=where)
 
     if not chunks:
         return {

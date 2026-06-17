@@ -41,7 +41,7 @@ MCP_SERVERS = [
 ]
 
 MAX_STEPS = 10
-
+TOOL_RESULT_MAX_CHARS = 4000  # raise the ceiling
 
 # ── Connect to all servers and build tool registry ─────────────────────────
 
@@ -196,9 +196,9 @@ async def run_agent(target_config:dict, verbose: bool = True) -> str:
 
                     tool_result = await call_tool(tool_router, tool_name, arguments)
 
-                    if len(tool_result) > 2000:
-                        logger.warning("Tool result truncated: %d → 2000 chars", len(tool_result))
-                        tool_result = tool_result[:2000]
+                    if len(tool_result) > TOOL_RESULT_MAX_CHARS:
+                        logger.warning("Tool result truncated: %d → %d chars", len(tool_result, TOOL_RESULT_MAX_CHARS))
+                        tool_result = tool_result[:TOOL_RESULT_MAX_CHARS]
 
                     history.append({
                         "role":         "tool",

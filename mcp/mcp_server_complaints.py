@@ -35,27 +35,41 @@ async def list_tools() -> list[types.Tool]:
                 "type": "object",
                 "properties": {
                     "question": {"type": "string"},
+                    "rating": {
+                        "type": ["number", "null"],
+                        "description": "Filter to a specific star rating, e.g. 1.0 for 1-star reviews. Use null or omit entirely if no rating filter is needed — do not pass null."
+                    },
+                    "top_k": {
+                        "type": "integer",
+                        "description": "Number of complaint samples to retrieve. Use 10-20 for broad pattern analysis across many complaints; use 3-5 for specific brand or narrow questions."
+                    }                    
                 },
                 "required": ["question"]
             }
         )
     ]
 
-
+MAX_TOP_K = 8
 @server.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
     logger.info("Tool called: %s args:%s", name, json.dumps(arguments)[:120])
 
     if name == "complaints_query":
+        requested_top_k = arguments.get("top_k") or config.RETRIEVAL_TOP_K
+        safe_top_k = min(requested_top_k, MAX_TOP_K)
+        rating = arguments.get("rating")
+        where = {"rating": float(rating)} if rating is not None else None
         result = rag_pipeline.query(
             corpus="complaints",
-            question=arguments["question"]
+            question=arguments["question"],
+            top_k=safe_top_k,
+            where=where,
         )
 
         output = {
             "answer": result["answer"],
             "sources": [
-                {"source": source["source"], "score": source["score"], "excerpt": source["text"][:200]}    
+                {"source": source["source"], "score": source["score"], "excerpt": source["text"][:150]}    
                 for source in result["sources"]
             ]
         }
