@@ -1,5 +1,8 @@
 import sys
 import os
+
+from config import GITHUB_REPO
+from config import GITHUB_REPO_OWNER
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import requests
@@ -23,8 +26,6 @@ logger = logging.getLogger(__name__)
 TARGET = "ecommerce"
 TOOL_NAME = "github"
 server = Server(TOOL_NAME +"-server")
-GITHUB_REPO = "scratch_repo_for_tests"
-GITHUB_REPO_OWNER = "sbsud"
 # Tool declarations
 @server.list_tools()
 async def list_tools() -> list[types.Tool]:
