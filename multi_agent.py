@@ -33,14 +33,14 @@ logger = logging.getLogger(__name__)
 
 # ── Server registry ────────────────────────────────────────────────────────
 # Add or remove servers here. The agent code below never changes.
-_target="ecommerce"
-_port_config = config.TARGET[_target]["mcp_port"]
-MCP_SERVERS = [
-    {"name": "complaints",    "url": f"http://localhost:{_port_config["complaints"]}/sse"},
-    {"name": "policy", "url": f"http://localhost:{_port_config["policy"]}/sse"},
-    {"name": "github", "url": f"http://localhost:{_port_config["github"]}/sse"},
+# _target="ecommerce"
+# _port_config = config.TARGET[_target]["mcp_port"]
+# MCP_SERVERS = [
+#     {"name": "complaints",    "url": f"http://localhost:{_port_config["complaints"]}/sse"},
+#     {"name": "policy", "url": f"http://localhost:{_port_config["policy"]}/sse"},
+#     {"name": "github", "url": f"http://localhost:{_port_config["github"]}/sse"},
 
-]
+# ]
 
 MAX_STEPS = 10
 TOOL_RESULT_MAX_CHARS = 4000  # raise the ceiling
@@ -298,10 +298,21 @@ def _call_openai_compatible(messages: list, tools: list) -> dict:
 
 if __name__ == "__main__":
 
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("--target", required=True, choices=config.TARGET.keys())
-    # args = parser.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--target", required=True, choices=config.TARGET.keys())
+    args = parser.parse_args()
+    global _target 
+    _target = args.target;
+    _port_config = config.TARGET[_target]["mcp_port"]
 
+    global MCP_SERVERS
+
+    MCP_SERVERS = [
+        {"name": "complaints",    "url": f"http://localhost:{_port_config["complaints"]}/sse"},
+        {"name": "policy", "url": f"http://localhost:{_port_config["policy"]}/sse"},
+        {"name": "github", "url": f"http://localhost:{_port_config["github"]}/sse"},
+
+]
     target_config = config.TARGET[_target]
 
     print("\n" + "=" * 60)
