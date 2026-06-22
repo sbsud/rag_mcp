@@ -172,7 +172,7 @@ python mcp/mcp_server_github.py       # listens on port 8005
 
 ```bash
 # Terminal 4
-python multi_agent.py
+python multi_agent.py --target ecommerce
 ```
 
 The agent runs the full investigation and prints the final answer.
