@@ -30,7 +30,13 @@ async def list_tools() -> list[types.Tool]:
     return [
         types.Tool(
             name="complaints_query",
-            description="",
+            description=(
+                "Search the Amazon Appliances customer complaints corpus to find complaint "
+                "patterns, identify brands with high complaint volume, or retrieve sample "
+                "review text for a specific rating tier. "
+                "Do NOT use this tool for resolution policies, refund rules, or SLA "
+                "information — use policy_query for those."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {

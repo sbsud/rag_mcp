@@ -31,7 +31,14 @@ async def list_tools() -> list[types.Tool]:
     return [
         types.Tool(
             name="policy_query",
-            description="",
+            description=(
+                "Search the customer support resolution policy corpus to find how specific "
+                "complaint types should be handled — refund rules, SLA commitments, "
+                "escalation thresholds, replacement procedures. "
+                "Call this AFTER complaints_query has identified a complaint pattern. "
+                "Do NOT use this tool for complaint data, review text, or brand "
+                "information — use complaints_query for those."
+            ),
             inputSchema={
                 "type": "object",
                 "properties": {
