@@ -8,3 +8,5 @@ data_dump/
 archive/
 chromadb/
 logs/
+.env
+*.env
