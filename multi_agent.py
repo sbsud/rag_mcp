@@ -199,7 +199,7 @@ async def run_agent(target_config:dict, verbose: bool = True) -> str:
                     tool_result = await call_tool(tool_router, tool_name, arguments)
 
                     if len(tool_result) > TOOL_RESULT_MAX_CHARS:
-                        logger.warning("Tool result truncated: %d → %d chars", len(tool_result, TOOL_RESULT_MAX_CHARS))
+                        logger.warning("Tool result truncated: %d → %d chars", len(tool_result), TOOL_RESULT_MAX_CHARS)
                         tool_result = tool_result[:TOOL_RESULT_MAX_CHARS]
 
                     history.append({
@@ -260,7 +260,6 @@ def _call_ollama(messages: list, tools: list) -> dict:
 def _call_openai_compatible(messages: list, tools: list) -> dict:
     url     = f"{config.LLM_BASE_URL}/v1/chat/completions"
     headers = {"Authorization": f"Bearer {os.getenv('LLM_API_KEY', 'none')}"}
-    logger.debug("REMOVE headers %s", headers)
     logger.debug("LLM call: openai_compatible  url=%s  model=%s", url, config.LLM_MODEL)
 
     response = requests.post(url, headers=headers, json={
