@@ -1,8 +1,7 @@
 import sys
 import os
 
-from config import GITHUB_REPO
-from config import GITHUB_REPO_OWNER
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import requests
@@ -19,7 +18,8 @@ import rag.rag_pipeline as rag_pipeline
 import config
 import app_utils
 from logging_config import setup_logging
-
+from config import GITHUB_REPO
+from config import GITHUB_REPO_OWNER
 setup_logging()
 logger = logging.getLogger(__name__)
 

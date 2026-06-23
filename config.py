@@ -7,8 +7,11 @@ from pathlib import Path
 # ── LLM ────────────────────────────────────────────────
 LLM_PROVIDER = "openai_compatible"          # "ollama" | "openai_compatible"
 # LLM_BASE_URL  = "http://localhost:11434"
-LLM_BASE_URL = "https://api.groq.com/openai"
-LLM_MODEL = "llama-3.3-70b-versatile"
+# LLM_BASE_URL = "https://api.groq.com/openai"
+# LLM_MODEL = "llama-3.3-70b-versatile"
+# config.py
+LLM_BASE_URL = "https://api.cerebras.ai"
+LLM_MODEL = "gpt-oss-120b"
 LLM_TEMPERATURE = 0.1
 LLM_MAX_TOKENS  = 1024
 
@@ -34,7 +37,7 @@ CHUNK_OVERLAP = 80     # overlap between consecutive chunks
 # ── MCP SERVER ─────────────────────────────────────────
 MCP_SERVER_NAME = "rag-server"
 
-LOG_LEVEL_NAME = "INFO"   # change to "DEBUG" for verbose console
+LOG_LEVEL_NAME = "DEBUG"   # change to "DEBUG" for verbose console
 LOG_DIR        = "logs/"
 
 MCP_WEBSEARCH_PORT = 8001
