@@ -1,6 +1,7 @@
 # config.py
 from dotenv import load_dotenv
 load_dotenv()
+import os
 import logging
 from pathlib import Path
 
@@ -26,6 +27,9 @@ VECTORSTORE_PATH      = str(Path(__file__).parent / "chromadb" / ".chroma")
 VECTORSTORE_COLLECTION = "corpus"
 VECTORSTORE_CORPUS_COLLECTION = "corpus"
 
+
+CHROMA_HOST = os.getenv("CHROMA_HOST", "localhost")
+CHROMA_PORT = int(os.getenv("CHROMA_PORT", "8000"))
 # ── RETRIEVAL ──────────────────────────────────────────
 RETRIEVAL_TOP_K       = 5        # how many chunks to fetch
 RETRIEVAL_STRATEGY    = "cosine" # "cosine" (only option for now; extend here)

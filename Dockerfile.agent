@@ -1,0 +1,8 @@
+# Dockerfile.agent for agent-service only
+FROM python:3.11-slim
+WORKDIR /app
+COPY requirements-base.txt .
+RUN pip install --no-cache-dir -r requirements-base.txt
+COPY config.py logging_config.py ./
+COPY llm/ llm/
+COPY agent/ agent/

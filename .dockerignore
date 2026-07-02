@@ -1,0 +1,12 @@
+chromadb/
+.chroma/
+logs/
+*.log
+__pycache__/
+*.pyc
+.env
+.git/
+models/
+*.bin
+*.safetensors
+data_dump/

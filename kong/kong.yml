@@ -3,10 +3,17 @@ _transform: true
 
 services:
   - name: agent-service
-    url: http://host.docker.internal:8080
+    url: http://agent-service:8080
     routes:
       - name: agent-route
         paths:
           - /query
         methods:
           - POST
+        strip_path: false
+      - name: agent-docs
+        paths:
+          - ~/.*
+        methods:
+          - GET
+        strip_path: false

@@ -47,8 +47,13 @@ class ChromaStore:
 
     def __init__(self, target:str):
         import chromadb
-        os.makedirs(config.VECTORSTORE_PATH, exist_ok=True)
-        self.client = chromadb.PersistentClient(path=config.VECTORSTORE_PATH)
+        # os.makedirs(config.VECTORSTORE_PATH, exist_ok=True)
+        # self.client = chromadb.PersistentClient(path=config.VECTORSTORE_PATH)
+        import chromadb
+        import os
+        chroma_host = os.getenv("CHROMA_HOST", "localhost")
+        chroma_port = int(os.getenv("CHROMA_PORT", "8000"))
+        self.client = chromadb.HttpClient(host=chroma_host, port=chroma_port)
         self.target = target
         collections = config.TARGET[target]["collections"]
         self.collections = {}

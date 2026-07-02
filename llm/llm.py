@@ -66,13 +66,33 @@ def _generate_openai_compatible(prompt: str) -> str:
     logger.debug("POST %s  model=%s", url, config.LLM_MODEL)
 
     try:
-        response = requests.post(url, headers=headers, json={
+        # response = requests.post(url, headers=headers, json={
+        #     "model": config.LLM_MODEL,
+        #     "messages": [{"role": "user", "content": prompt}],
+        #     "temperature": config.LLM_TEMPERATURE,
+        #     "max_tokens": config.LLM_MAX_TOKENS,
+        # })
+        json={
             "model": config.LLM_MODEL,
             "messages": [{"role": "user", "content": prompt}],
             "temperature": config.LLM_TEMPERATURE,
             "max_tokens": config.LLM_MAX_TOKENS,
-        })
-        response.raise_for_status()
+        }
+        # response.raise_for_status()
+        for attempt in range(3):
+            response = requests.post(url, headers=headers, json={
+                "model": config.LLM_MODEL,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": config.LLM_TEMPERATURE,
+                "max_tokens": config.LLM_MAX_TOKENS,
+            }   )
+            if response.status_code == 429:
+                wait = 12 * (attempt + 1)  # 12s, 24s, 36s — stays within 5 RPM window
+                logger.warning("429 from Cerebras — waiting %ds before retry (attempt %d/3)", wait, attempt + 1)
+                time.sleep(wait)
+                continue
+            response.raise_for_status()
+            break        
     except requests.exceptions.HTTPError as e:
         logger.error("OpenAI-compatible generate request failed: %s", e)
         raise

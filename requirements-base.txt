@@ -2,7 +2,6 @@
 # see requirements-lock.txt.
 # RAG + vector store
 chromadb>=0.6
-sentence-transformers>=3.0
 numpy>=1.26
 
 # LLM + HTTP
@@ -21,3 +20,6 @@ ddgs>=3.0
 
 # Environment
 python-dotenv>=1.0
+
+# FastAPI
+fastapi>=0.100

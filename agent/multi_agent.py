@@ -146,9 +146,9 @@ async def run_agent(trace_id: str, target: str, target_config:dict = None, query
         # goal = query or target_config["goal"]
         history = [
             {"role": "system", "content": target_config["system_prompt"]},
-            {"role": "user", "content":  f"{target_config["goal"]}\n\nUser request: {query}"},
+            {"role": "user", "content":  f"{target_config['goal']}\n\nUser request: {query}"},
         ]
-
+        logger.info("TEST REMOVE")
         if verbose:
             print()
 
@@ -263,20 +263,38 @@ def _call_ollama(messages: list, tools: list) -> dict:
 
 
 def _call_openai_compatible(messages: list, tools: list) -> dict:
-    url     = f"{config.LLM_BASE_URL}/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {os.getenv('LLM_API_KEY', 'none')}"}
+    llm_base_url = os.getenv('LLM_BASE_URL', 'none')
+    llm_api_key = os.getenv('LLM_API_KEY', 'none')
+    logger.info("llm_base_url == %s ||||llm_api_key == %s", llm_base_url,llm_api_key)
+    url     = f"{llm_base_url}/chat/completions"
+    headers = {"Authorization": f"Bearer {llm_api_key}"}
     logger.debug("LLM call: openai_compatible  url=%s  model=%s", url, config.LLM_MODEL)
+    logger.info("HEADERS == %s", headers)
+    # response = requests.post(url, headers=headers, json={
+    #     "model":       config.LLM_MODEL,
+    #     "tools":       tools,
+    #     "messages":    messages,
+    #     "temperature": 0.1,
+    # })
 
-    response = requests.post(url, headers=headers, json={
-        "model":       config.LLM_MODEL,
-        "tools":       tools,
-        "messages":    messages,
-        "temperature": 0.1,
-    })
+    for attempt in range(3):
+        response = requests.post(url, headers=headers, json={
+            "model":       config.LLM_MODEL,
+            "tools":       tools,
+            "messages":    messages,
+            "temperature": 0.1,
+        })
+        if response.status_code == 429:
+            wait = 12 * (attempt + 1)  # 12s, 24s, 36s — stays within 5 RPM window
+            logger.warning("429 from Cerebras — waiting %ds before retry (attempt %d/3)", wait, attempt + 1)
+            time.sleep(wait)
+            continue
+        response.raise_for_status()
+        break
 
     if not response.ok:
         print(f"=== LLM ERROR {response.status_code} ===")
-        print(response.text)           # Groq always puts the reason here
+        print(response.text)
         print("=== END LLM ERROR ===")
 
     response.raise_for_status()
@@ -306,9 +324,9 @@ def setup(target: str) -> dict:
     global MCP_SERVERS
 
     MCP_SERVERS = [
-        {"name": "complaints",    "url": f"http://localhost:{_port_config["complaints"]}/sse"},
-        {"name": "policy", "url": f"http://localhost:{_port_config["policy"]}/sse"},
-        {"name": "github", "url": f"http://localhost:{_port_config["github"]}/sse"},
+        {"name": "complaints",    "url": f"{os.getenv('COMPLAINTS_MCP_URL')}"},
+        {"name": "policy", "url": f"{os.getenv('POLICY_MCP_URL')}"},
+        {"name": "github", "url": f"{os.getenv('GITHUB_MCP_URL')}"},
 
 ]
     target_config = config.TARGET[target]
