@@ -164,7 +164,7 @@ async def run_agent(trace_id: str, target: str, target_config:dict = None, query
 
             llm_elapsed = time.perf_counter() - llm_start
             logger.info("LLM responded in %.2fs  provider=%s  model=%s",
-                        llm_elapsed, config.LLM_PROVIDER, config.LLM_MODEL)
+                        llm_elapsed, config.LLM_PROVIDER, llm_model)
             # Tool call?
             if message.get("tool_calls"):
                 # Re-serialise arguments to JSON string for history storage.
@@ -263,23 +263,15 @@ def _call_ollama(messages: list, tools: list) -> dict:
 
 
 def _call_openai_compatible(messages: list, tools: list) -> dict:
-    llm_base_url = os.getenv('LLM_BASE_URL', 'none')
-    llm_api_key = os.getenv('LLM_API_KEY', 'none')
     logger.info("llm_base_url == %s ||||llm_api_key == %s", llm_base_url,llm_api_key)
-    url     = f"{llm_base_url}/chat/completions"
+    url     = f"{llm_base_url}/v1/chat/completions"
     headers = {"Authorization": f"Bearer {llm_api_key}"}
-    logger.debug("LLM call: openai_compatible  url=%s  model=%s", url, config.LLM_MODEL)
+    logger.debug("LLM call: openai_compatible  url=%s  model=%s", url, llm_model)
     logger.info("HEADERS == %s", headers)
-    # response = requests.post(url, headers=headers, json={
-    #     "model":       config.LLM_MODEL,
-    #     "tools":       tools,
-    #     "messages":    messages,
-    #     "temperature": 0.1,
-    # })
 
     for attempt in range(3):
         response = requests.post(url, headers=headers, json={
-            "model":       config.LLM_MODEL,
+            "model":       llm_model,
             "tools":       tools,
             "messages":    messages,
             "temperature": 0.1,
@@ -319,6 +311,10 @@ def _call_openai_compatible(messages: list, tools: list) -> dict:
 
 
 def setup(target: str) -> dict:
+    global llm_base_url, llm_api_key, llm_model
+    llm_base_url = os.environ['LLM_BASE_URL']
+    llm_api_key = os.environ['LLM_API_KEY']
+    llm_model = os.environ['LLM_MODEL']
     _port_config = config.TARGET[target]["mcp_port"]
 
     global MCP_SERVERS
@@ -340,17 +336,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     global _target 
     _target = args.target;
-#     _port_config = config.TARGET[_target]["mcp_port"]
 
-#     global MCP_SERVERS
-
-#     MCP_SERVERS = [
-#         {"name": "complaints",    "url": f"http://localhost:{_port_config["complaints"]}/sse"},
-#         {"name": "policy", "url": f"http://localhost:{_port_config["policy"]}/sse"},
-#         {"name": "github", "url": f"http://localhost:{_port_config["github"]}/sse"},
-
-# ]
-#     target_config = config.TARGET[_target]
     target_config = setup(target=_target)
     print("\n" + "=" * 60)
     

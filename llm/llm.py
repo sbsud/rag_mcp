@@ -13,8 +13,8 @@ import config
 logger = logging.getLogger(__name__)
 
 def generate(prompt: str) -> str:
-    logger.debug("LLM generate: provider=%s  model=%s  prompt_len=%d chars",
-                config.LLM_PROVIDER, config.LLM_MODEL, len(prompt))
+    # logger.debug("LLM generate: provider=%s  model=%s  prompt_len=%d chars",
+    #             config.LLM_PROVIDER, config.LLM_MODEL, len(prompt))
 
     start = time.perf_counter()
     if config.LLM_PROVIDER == "ollama":
@@ -25,8 +25,8 @@ def generate(prompt: str) -> str:
         raise ValueError(f"Unknown LLM_PROVIDER: {config.LLM_PROVIDER}")
 
     elapsed = time.perf_counter() - start
-    logger.info("LLM generate complete: model=%s  response_len=%d chars  elapsed=%.2fs",
-                config.LLM_MODEL, len(answer), elapsed)
+    # logger.info("LLM generate complete: model=%s  response_len=%d chars  elapsed=%.2fs",
+    #             config.LLM_MODEL, len(answer), elapsed)
     logger.debug("LLM response preview: %s", answer[:200])
     return answer
 
@@ -61,27 +61,17 @@ def _generate_ollama(prompt: str) -> str:
 # Works with: LM Studio, vLLM, Together AI, Groq, etc.
 def _generate_openai_compatible(prompt: str) -> str:
     import os
-    url = f"{config.LLM_BASE_URL}/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {os.getenv('LLM_API_KEY', 'none')}"}
-    logger.debug("POST %s  model=%s", url, config.LLM_MODEL)
+    llm_base_url = os.environ['LLM_BASE_URL']
+    llm_api_key = os.environ['LLM_API_KEY']
+    llm_model = os.environ['LLM_MODEL']
+    url = f"{llm_base_url}/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {llm_api_key}"}
+    logger.debug("POST %s  model=%s", url, llm_model)
 
     try:
-        # response = requests.post(url, headers=headers, json={
-        #     "model": config.LLM_MODEL,
-        #     "messages": [{"role": "user", "content": prompt}],
-        #     "temperature": config.LLM_TEMPERATURE,
-        #     "max_tokens": config.LLM_MAX_TOKENS,
-        # })
-        json={
-            "model": config.LLM_MODEL,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": config.LLM_TEMPERATURE,
-            "max_tokens": config.LLM_MAX_TOKENS,
-        }
-        # response.raise_for_status()
         for attempt in range(3):
             response = requests.post(url, headers=headers, json={
-                "model": config.LLM_MODEL,
+                "model": llm_model,
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": config.LLM_TEMPERATURE,
                 "max_tokens": config.LLM_MAX_TOKENS,
