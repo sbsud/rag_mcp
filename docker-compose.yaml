@@ -23,13 +23,22 @@ services:
     ports:
       - "8080:8000"
 
+  # consul:
+  #   image: hashicorp/consul:2.0.1
+  #   command: agent -server -bootstrap-expect=1 -ui -client=0.0.0.0
+  #   ports:
+  #     - "8500:8500"
+  #   volumes:
+  #     - consul-data:/consul/data
+
   consul:
-    image: hashicorp/consul:2.0.1
-    command: agent -server -bootstrap-expect=1 -ui -client=0.0.0.0
+    image:  hashicorp/consul:2.0.1
+    volumes:
+      - ./consul_config:/consul_config:ro
+      - consul-data:/consul/data
+    entrypoint: ["/bin/sh", "/consul_config/bootstrap.sh"]
     ports:
       - "8500:8500"
-    volumes:
-      - consul-data:/consul/data
 
 
   embedder-service:
