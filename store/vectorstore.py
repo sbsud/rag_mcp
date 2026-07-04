@@ -15,6 +15,40 @@ import config
 
 logger = logging.getLogger(__name__)
 _target = "ecommerce"
+
+def _load_collections_from_consul(target: str) -> dict:
+    """
+    Reads collection name mappings from Consul KV.
+    Falls back to env vars if Consul is unavailable.
+    Returns e.g. {"complaints": "corpus_complaints", "policy": "corpus_policy"}
+    """
+    consul_url = os.getenv("CONSUL_URL")
+    prefix = f"rag_mcp/{target}/collections"
+
+    if consul_url:
+        try:
+            import requests
+            r = requests.get(f"{consul_url}/v1/kv/{prefix}?keys", timeout=3)
+            r.raise_for_status()
+            keys = r.json()  # list of full key paths
+            collections = {}
+            for key in keys:
+                name = key.split("/")[-1]  # e.g. "complaints"
+                val_r = requests.get(f"{consul_url}/v1/kv/{key}?raw", timeout=3)
+                val_r.raise_for_status()
+                collections[name] = val_r.text
+                logger.info("Loaded collection from Consul: %s → %s", name, val_r.text)
+            return collections
+        except Exception as e:
+            logger.warning("Consul collection lookup failed: %s — using env var fallback", e)
+
+    # fallback for local dev without Consul
+    return {
+        "complaints": os.getenv("COMPLAINTS_COLLECTION", "corpus_complaints"),
+        "policy":     os.getenv("POLICY_COLLECTION",     "corpus_policy"),
+    }
+
+
 def _get_store():
     if config.VECTORSTORE_PROVIDER == "chromadb":
         return ChromaStore(_target)
@@ -28,9 +62,8 @@ def get_store():
     global _store
     if _store is None:
         # _store = _get_store()
-        logger.debug("Initialising vector store: provider=%s  path=%s  target=%s",
-                config.VECTORSTORE_PROVIDER, config.VECTORSTORE_PATH,
-                _target)
+        logger.debug("Initialising vector store: provider=%s ",
+                config.VECTORSTORE_PROVIDER)
         _store = _get_store()
         # logger.info("Vector store ready — %d chunks in collection '%s'",
         #             _store.count(), config.VECTORSTORE_CORPUS_COLLECTION)
@@ -55,15 +88,23 @@ class ChromaStore:
         chroma_port = int(os.getenv("CHROMA_PORT", "8000"))
         self.client = chromadb.HttpClient(host=chroma_host, port=chroma_port)
         self.target = target
-        collections = config.TARGET[target]["collections"]
+        self._collection_names = _load_collections_from_consul(target)
         self.collections = {}
-        for collection in collections:
-            coll_name = collections[collection]
-            logger.info("Creating collection %s", coll_name)
-            self.collections[collection] = self.client.get_or_create_collection(
-                name=coll_name,
-                metadata={"hnsw:space": "cosine"},  # use cosine similarity
-            )
+        for logical_name, chroma_name in self._collection_names.items():
+            logger.info("Creating collection %s → %s", logical_name, chroma_name)
+            self.collections[logical_name] = self.client.get_or_create_collection(
+                name=chroma_name,
+                metadata={"hnsw:space": "cosine"},
+            )        
+        # collections = config.TARGET[target]["collections"]
+        # self.collections = {}
+        # for collection in collections:
+        #     coll_name = collections[collection]
+        #     logger.info("Creating collection %s", coll_name)
+        #     self.collections[collection] = self.client.get_or_create_collection(
+        #         name=coll_name,
+        #         metadata={"hnsw:space": "cosine"},  # use cosine similarity
+        #     )
 
 
     def add(self, collection, ids, embeddings, documents, metadatas):
@@ -87,7 +128,8 @@ class ChromaStore:
 
 
     def query(self, collection:str, query_embedding: list[float], top_k: int, where: dict = None) -> dict:
-        collection_name = config.TARGET[self.target]["collections"][collection]
+        # collection_name = config.TARGET[self.target]["collections"][collection]
+        collection_name = self._collection_names[collection]
         logger.debug("Vector search: top_k=%d  collection='%s'",
                 top_k, collection_name)
         

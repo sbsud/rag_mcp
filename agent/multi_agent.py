@@ -110,19 +110,19 @@ async def call_tool(tool_router: dict, tool_name: str, arguments: dict) -> str:
 
 # ── The agent loop ─────────────────────────────────────────────────────────
 
-async def run_agent(trace_id: str, target: str, target_config:dict = None, query:str = None, verbose: bool = True) -> str:
+async def run_agent(trace_id: str, target: str, query:str = None, verbose: bool = True, goal:str = None, system_prompt:str = None) -> str:
     """
     Opens SSE connections to all servers, builds the tool registry,
     then runs the ReAct loop until the LLM produces a final answer.
     """
     # target_config = config.TARGET[target]
-    target_config = setup(target=target)
-
+    # target_config = setup(target=target)
+    setup()
     # Open all SSE connections concurrently using AsyncExitStack
     from contextlib import AsyncExitStack
     logger.info("═" * 60)
     logger.info("TRACE ID = %s",trace_id)
-    logger.info("Agent starting — goal: '%s'", target_config["goal"][:100])
+    logger.info("Agent starting — goal: '%s'", goal[:100])
 
     async with AsyncExitStack() as stack:
 
@@ -145,8 +145,8 @@ async def run_agent(trace_id: str, target: str, target_config:dict = None, query
         ollama_tools, tool_router = await build_tool_registry(sessions)
         # goal = query or target_config["goal"]
         history = [
-            {"role": "system", "content": target_config["system_prompt"]},
-            {"role": "user", "content":  f"{target_config['goal']}\n\nUser request: {query}"},
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content":  f"{goal} {query}"},
         ]
         logger.info("TEST REMOVE")
         if verbose:
@@ -278,7 +278,7 @@ def _call_openai_compatible(messages: list, tools: list) -> dict:
         })
         if response.status_code == 429:
             wait = 12 * (attempt + 1)  # 12s, 24s, 36s — stays within 5 RPM window
-            logger.warning("429 from Cerebras — waiting %ds before retry (attempt %d/3)", wait, attempt + 1)
+            logger.warning("429 from LLM Provider — waiting %ds before retry (attempt %d/3)", wait, attempt + 1)
             time.sleep(wait)
             continue
         response.raise_for_status()
@@ -308,37 +308,50 @@ def _call_openai_compatible(messages: list, tools: list) -> dict:
 # ── Queries ────────────────────────────────────────────────────────────────
 
 # def main():
+def build_mcp_servers() -> list[dict]:
+    consul_url = os.environ["CONSUL_URL"]
+    if consul_url:
+        from agent.mcp_discovery import discover_services
+        servers = discover_services(["complaints-mcp", "policy-mcp", "github-mcp"])
+        import logging
+        logging.getLogger(__name__).info("MCP_SERVERS from Consul: %s", servers)
+        return servers        
+    # fallback for local dev without Docker
+    return [
+        {"name": "complaints-mcp", "url": os.getenv("COMPLAINTS_MCP_URL", "http://localhost:8003/sse")},
+        {"name": "policy-mcp",     "url": os.getenv("POLICY_MCP_URL",     "http://localhost:8004/sse")},
+        {"name": "github-mcp",     "url": os.getenv("GITHUB_MCP_URL",     "http://localhost:8005/sse")},
+    ]
 
-
-def setup(target: str) -> dict:
-    global llm_base_url, llm_api_key, llm_model
+def setup() -> dict:
+    global llm_base_url, llm_api_key, llm_model, MCP_SERVERS
     llm_base_url = os.environ['LLM_BASE_URL']
     llm_api_key = os.environ['LLM_API_KEY']
     llm_model = os.environ['LLM_MODEL']
-    _port_config = config.TARGET[target]["mcp_port"]
+    # _port_config = config.TARGET[target]["mcp_port"]
 
-    global MCP_SERVERS
+    MCP_SERVERS = build_mcp_servers()
+    return
+#     MCP_SERVERS = [
+#         {"name": "complaints",    "url": f"{os.getenv('COMPLAINTS_MCP_URL')}"},
+#         {"name": "policy", "url": f"{os.getenv('POLICY_MCP_URL')}"},
+#         {"name": "github", "url": f"{os.getenv('GITHUB_MCP_URL')}"},
 
-    MCP_SERVERS = [
-        {"name": "complaints",    "url": f"{os.getenv('COMPLAINTS_MCP_URL')}"},
-        {"name": "policy", "url": f"{os.getenv('POLICY_MCP_URL')}"},
-        {"name": "github", "url": f"{os.getenv('GITHUB_MCP_URL')}"},
-
-]
-    target_config = config.TARGET[target]
-    return target_config
+# ]
+    # target_config = config.TARGET[target]
+    # return target_config
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--target", required=True, choices=config.TARGET.keys())
-    args = parser.parse_args()
-    global _target 
-    _target = args.target;
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument("--target", required=True, choices=config.TARGET.keys())
+#     args = parser.parse_args()
+#     global _target 
+#     _target = args.target;
 
-    target_config = setup(target=_target)
-    print("\n" + "=" * 60)
+#     target_config = setup(target=_target)
+#     print("\n" + "=" * 60)
     
-    answer = asyncio.run(run_agent(target_config, target=_target))
-    print("Answer:", answer)
+#     answer = asyncio.run(run_agent(target_config, target=_target))
+#     print("Answer:", answer)

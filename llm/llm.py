@@ -78,7 +78,7 @@ def _generate_openai_compatible(prompt: str) -> str:
             }   )
             if response.status_code == 429:
                 wait = 12 * (attempt + 1)  # 12s, 24s, 36s — stays within 5 RPM window
-                logger.warning("429 from Cerebras — waiting %ds before retry (attempt %d/3)", wait, attempt + 1)
+                logger.warning("429 from LLM Provider — waiting %ds before retry (attempt %d/3)", wait, attempt + 1)
                 time.sleep(wait)
                 continue
             response.raise_for_status()

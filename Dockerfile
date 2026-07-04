@@ -7,5 +7,5 @@ COPY config.py logging_config.py ./
 COPY store/ store/
 COPY rag/ rag/
 COPY llm/ llm/
-COPY mcp/ mcp/
+COPY mcp_servers/ mcp_servers/
 

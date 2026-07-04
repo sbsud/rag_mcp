@@ -1,9 +1,12 @@
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from mcp.server.sse import SseServerTransport
 from mcp.server import Server
 import logging
 from starlette.applications import Starlette
 from starlette.routing import Mount, Route
-from starlette.responses import Response
+from starlette.responses import Response,JSONResponse
 
 import uvicorn
 
@@ -32,13 +35,20 @@ def make_app(server: Server) -> Starlette:
         finally:
             logger.info("SSE connection closed from %s", client)
 
+    async def handle_health(request):
+        return JSONResponse({"status": "ok"})
+
     return Starlette(
         routes=[
             Route("/sse", endpoint=handle_sse),
+            Route("/health", endpoint=handle_health),
             Mount("/messages", app=sse_transport.handle_post_message)
         ]
     )
 
-def deploy(server: Server, port: int):
+def deploy(server: Server, port: int, service_name: str = None):
+    from mcp_servers.consul_utils import register_service
+    if service_name:
+        register_service(service_name, port)
     app = make_app(server)
     uvicorn.run(app, host="0.0.0.0", port=port)

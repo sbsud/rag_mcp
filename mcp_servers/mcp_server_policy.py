@@ -21,7 +21,7 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 TARGET = "ecommerce"
-TOOL_NAME = "policy"
+TOOL_NAME = "policy-mcp"
 server = Server(TOOL_NAME +"-server")
 
 # Tool declarations
@@ -72,5 +72,5 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
     
 
 if __name__ == "__main__":
-    port = config.TARGET[TARGET]["mcp_port"][TOOL_NAME]
-    app_utils.deploy(server, port)
+    port = int(os.environ["MCP_PORT"])
+    app_utils.deploy(server, port, service_name=TOOL_NAME)

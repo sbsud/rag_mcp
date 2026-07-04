@@ -10,3 +10,4 @@ chromadb/
 logs/
 .env
 *.env
+.vscode/

@@ -4,6 +4,9 @@ _transform: true
 services:
   - name: agent-service
     url: http://agent-service:8080
+    connect_timeout: 10000
+    write_timeout: 300000
+    read_timeout: 300000    
     routes:
       - name: agent-route
         paths:
