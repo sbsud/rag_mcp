@@ -123,7 +123,7 @@ async def run_agent(trace_id: str, target: str, query:str = None, verbose: bool 
     logger.info("═" * 60)
     logger.info("TRACE ID = %s",trace_id)
     logger.info("Agent starting — goal: '%s'", goal[:100])
-
+    tool_call_counts: dict[str, int] = {}
     async with AsyncExitStack() as stack:
 
         # Connect to every server and initialise sessions
@@ -200,7 +200,18 @@ async def run_agent(trace_id: str, target: str, query:str = None, verbose: bool 
 
                     logger.info("LLM decided: call '%s'  args=%s",
                                 tool_name, json.dumps(arguments))
-
+                    count = tool_call_counts.get(tool_name, 0)
+                    if count >= 1 and tool_name in ("complaints_query", "policy_query"):
+                        logger.warning("Gate: '%s' already called — injecting stop signal", tool_name)
+                        history.append({
+                            "role": "tool",
+                            "content": json.dumps({"answer": "Tool already called. Do NOT call it again. You now have all required data. Your ONLY valid next action is create_github_issue if a policy clause was found, or provide your final answer if not."}),
+                            "tool_call_id": tool_call_id,
+                            "name": tool_name
+                        })
+                        tool_call_counts[tool_name] = count + 1
+                        continue
+                    tool_call_counts[tool_name] = count + 1
                     tool_result = await call_tool(tool_router, tool_name, arguments)
 
                     if len(tool_result) > TOOL_RESULT_MAX_CHARS:

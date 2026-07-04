@@ -18,8 +18,12 @@ import rag.rag_pipeline as rag_pipeline
 import config
 import app_utils
 from logging_config import setup_logging
-from config import GITHUB_REPO
-from config import GITHUB_REPO_OWNER
+from consul_utils import get_kv
+# from config import GITHUB_REPO
+# from config import GITHUB_REPO_OWNER
+
+
+
 setup_logging()
 logger = logging.getLogger(__name__)
 
@@ -71,6 +75,8 @@ async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
     logger.info("Tool called: %s args:%s", name, json.dumps(arguments)[:120])
 
     if name == "create_github_issue_action":
+        GITHUB_REPO = get_kv(key="rag_mcp/ecommerce/github/repo")
+        GITHUB_REPO_OWNER = get_kv(key="rag_mcp/ecommerce/github/owner")
         pattern = arguments.get("complaint_pattern", "").lower()
         clause = arguments.get("policy_clause", "").lower()
         if any(m in pattern for m in PLACEHOLDER_MARKERS) or any(m in clause for m in PLACEHOLDER_MARKERS):

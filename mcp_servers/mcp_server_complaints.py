@@ -58,29 +58,34 @@ async def list_tools() -> list[types.Tool]:
 MAX_TOP_K = 8
 @server.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[types.TextContent]:
-    logger.info("Tool called: %s args:%s", name, json.dumps(arguments)[:120])
+    try:
+        logger.info("Tool called: %s args:%s", name, json.dumps(arguments)[:120])
 
-    if name == "complaints_query":
-        requested_top_k = arguments.get("top_k") or config.RETRIEVAL_TOP_K
-        safe_top_k = min(requested_top_k, MAX_TOP_K)
-        rating = arguments.get("rating")
-        where = {"rating": float(rating)} if rating is not None else None
-        result = rag_pipeline.query(
-            corpus="complaints",
-            question=arguments["question"],
-            top_k=safe_top_k,
-            where=where,
-        )
+        if name == "complaints_query":
+            requested_top_k = arguments.get("top_k") or config.RETRIEVAL_TOP_K
+            safe_top_k = min(requested_top_k, MAX_TOP_K)
+            rating = arguments.get("rating")
+            where = {"rating": float(rating)} if rating is not None else None
+            result = rag_pipeline.query(
+                corpus="complaints",
+                question=arguments["question"],
+                top_k=safe_top_k,
+                where=where,
+            )
 
-        output = {
-            "answer": result["answer"],
-            "sources": [
-                {"source": source["source"], "score": source["score"], "excerpt": source["text"][:150]}    
-                for source in result["sources"]
-            ]
-        }
-        logger.debug("output ********** type %s \nvalue %s", type(output), output)
-        return [types.TextContent(type="text", text=json.dumps(output, indent=2))]
+            output = {
+                "answer": result["answer"],
+                "sources": [
+                    {"source": source["source"], "score": source["score"], "excerpt": source["text"][:150]}    
+                    for source in result["sources"]
+                ]
+            }
+            logger.debug("output ********** type %s \nvalue %s", type(output), output)
+            return [types.TextContent(type="text", text=json.dumps(output, indent=2))]
+    except Exception as e:
+        import traceback
+        logger.error("call_tool exception: %s\n%s", e, traceback.format_exc())
+        return [types.TextContent(type="text", text=str(e))]        
     
 
 if __name__ == "__main__":

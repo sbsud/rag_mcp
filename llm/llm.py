@@ -87,4 +87,22 @@ def _generate_openai_compatible(prompt: str) -> str:
         logger.error("OpenAI-compatible generate request failed: %s", e)
         raise
 
-    return response.json()["choices"][0]["message"]["content"].strip()
+    # return response.json()["choices"][0]["message"]["content"].strip()
+    try:
+        return _extract_content(response.json())
+    except Exception as e:
+        logger.error("Failed to parse LLM response: %s\nRaw: %s", e, response.text[:500])
+        raise
+    
+def _extract_content(response_json: dict) -> str:
+    choices = response_json.get("choices", [])
+    if not choices:
+        logger.error("Empty choices in LLM response: %s", response_json)
+        return "LLM returned no content."
+    message = choices[0].get("message", {})
+    content = message.get("content", "")
+    if isinstance(content, list):
+        # Google AI Studio returns content as list of parts when filtered
+        logger.warning("LLM content is a list — extracting text parts: %s", content)
+        return " ".join(p.get("text", "") for p in content if isinstance(p, dict))
+    return (content or "").strip()

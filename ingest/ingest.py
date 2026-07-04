@@ -206,13 +206,13 @@ def ingest_text_file(collection: str, path: Path) -> int:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--target", required=True, choices=config.TARGET.keys())
+    parser.add_argument("--target", required=True)
     parser.add_argument("--collection", required=True)
     parser.add_argument("--path", required=True)
     args = parser.parse_args()
 
-    if args.collection not in config.TARGET[args.target]["collections"]:
-        parser.error(f"argument --collection: invalid choice: '{args.collection}' (choose from [{", ".join(config.TARGET[args.target]["collections"])}] when --target is '{args.target}')")
+    # if args.collection not in config.TARGET[args.target]["collections"]:
+    #     parser.error(f"argument --collection: invalid choice: '{args.collection}' (choose from [{", ".join(config.TARGET[args.target]["collections"])}] when --target is '{args.target}')")
 
     setup_logging()
     global logger 

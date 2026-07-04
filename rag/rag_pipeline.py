@@ -16,8 +16,9 @@ logger = logging.getLogger(__name__)
 
 PROMPT_TEMPLATE = """\
 You are a helpful assistant. Answer the question using ONLY the context provided below.
-If the context does not contain enough information, say "I don't have enough information to answer that."
-If a policy clause specifies a category, condition, or scope that does not match the question being asked, do not apply that clause — explicitly note that it doesn't apply rather than including it as if it does.
+If a retrieved clause is reasonably applicable to the question — even if it does not name the exact product or complaint type — cite it and explain how it applies.
+Only say "I don't have enough information" if no retrieved clause has any reasonable relevance to the question.
+Do not invent clauses not present in the context.
 
 
 ## Context
